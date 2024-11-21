@@ -1,13 +1,12 @@
 from pandas import DataFrame
 from asyncio import run
 
-from core.initial_data import MenopauseData
 from core.stage_1.main_topics import GeneralDiscussionAnalysis
 
 
 async def main():
     get_data = GeneralDiscussionAnalysis()
-    data = await get_data.topics_data_collection()
+    data = await get_data.lda_topics()
     print(data)
 
 

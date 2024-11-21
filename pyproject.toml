@@ -9,6 +9,12 @@ readme = "README.md"
 python = "^3.12"
 pandas = "^2.2.3"
 loguru = "^0.7.2"
+transformers = "^4.46.3"
+scikit-learn = "^1.5.2"
+huggingface-hub = "^0.26.2"
+numpy = "^1.21.0"
+gensim = "^4.3.3"
+nltk = "^3.9.1"
 
 
 [build-system]
