@@ -1,5 +1,7 @@
 # todo:
-#  1) main topics discussed in the online community (+ apply web scrapping techniques);
+#  1) main topics discussed in the online community (apply web scrapping techniques);
+#  2) key themes emerging from the conversation (NER).
+
 import pandas as pd
 from pandas import DataFrame
 
@@ -24,25 +26,18 @@ nltk.download('punkt')
 
 class GeneralDiscussionAnalysis:
 
-    def __init__(self):
-        ...
-
     async def lda_topics(self):
-
         try:
-            # df: list[str] = pd.read_csv(DATA_SOURCE)['Key Phrases'].tolist()
-            df: DataFrame = await Preprocess.fully_preprocessed_data()
-            df: list[str] = df['Key Phrases'].tolist()
-            # todo: preprocess here
+            df: list[str] = await Preprocess.fully_preprocessed_data()
             tokenized_docs = [word_tokenize(str(doc)) for doc in df]
             dictionary = corpora.Dictionary(tokenized_docs)
             corpus = [dictionary.doc2bow(doc) for doc in tokenized_docs]
             lda_model = gensim.models.LdaMulticore(corpus, num_topics=3, id2word=dictionary, passes=10)
             for idx, topic in lda_model.print_topics():
-                return f"Topic {idx}: {topic}"
+                print(f"Topic {idx}: {topic}")
 
         except Exception as e:
-            logger.error(f'Here is an error/ More details provided: {e!r}')
+            logger.error(f'Error in LDA topics: {e!r}')
 
     async def main_topics_data_collection(self):
         # todo 1: get main topics by keywords provided in 'Key Phrases' column

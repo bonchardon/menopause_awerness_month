@@ -1,8 +1,10 @@
-from typing import Any
 from string import punctuation
-from asyncio import gather
+from re import sub
+from csv import DictReader
 
 from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from nltk import word_tokenize
 
 import numpy as np
 import pandas as pd
@@ -10,62 +12,55 @@ from pandas import DataFrame
 
 from loguru import logger
 
-from src.core.consts import DATA_SOURCE
+from src.core.consts import DATA_SOURCE, KEY_PHRASES
 
 np.random.seed(42)
 
 
 class Preprocess:
-
     def __init__(self):
         self.df: DataFrame = pd.read_csv(DATA_SOURCE)
 
     @staticmethod
-    async def preprocess(data) -> DataFrame:
+    def lemmas(text_data: str) -> list[str]:
         try:
-            df: DataFrame = data.loc[:, data.notna().all(axis=0) & (data != 0).all(axis=0)]
-            duplicates: DataFrame | None = df[df.duplicated(subset='text', keep=False)]
-            if duplicates.empty:
-                logger.info('Seems like there are no duplicates')
-            else:
-                logger.info(f'Duplicates: \n'
-                            f'{duplicates[0:5]}')
-            df: DataFrame = df.drop_duplicates(subset='Key Phrases', keep='first')
-            return df.dropna()
-        except ValueError as e:
-            logger.error(f'Here is the error: {e!r}')
-
-    @staticmethod
-    async def lemmas(text_data) -> DataFrame | None:
-        try:
-            word_lemmas: WordNetLemmatizer = WordNetLemmatizer()
-            words = text_data.split()
+            word_lemmas = WordNetLemmatizer()
+            words = word_tokenize(text_data)
             return [word_lemmas.lemmatize(word) for word in words]
         except ValueError as e:
-            logger.error(f'Getting issues here, namely ==> {e!r}')
+            logger.error(f'Error in lemmatizing: {e!r}')
 
     @staticmethod
-    async def get_rid_of_punctuation(text_data) -> DataFrame:
+    def get_rid_of_punctuation_and_nan() -> list[str]:
         try:
-            return text_data.translate(str.maketrans('', '', punctuation)).lower()
+            try_list = []
+            with open(DATA_SOURCE, 'r') as file:
+                csv_reader = DictReader(file)
+                for row in csv_reader:
+                    text_data = row[KEY_PHRASES]
+                    text_data = str(text_data)
+                    text_data = text_data.replace('nan', '').strip()
+                    cleaned_text = sub(r'[^\w\s]', ' ', text_data)
+                    sentences = cleaned_text.splitlines()
+                    sentences = [sentence.strip() for sentence in sentences if sentence.strip() != '']
+                    try_list.extend(sentences)
+            return try_list
         except ValueError as e:
-            logger.error(f'Oops, something went wrong in fuck_punctuation. Mama told ya not to use profanity, '
-                         f'but you didnt listen. Maybe, this would help: {e!r}')
+            logger.error(f'Error in removing punctuation: {e!r}')
+
+    @staticmethod
+    async def stop_words_removal(word_list: list[str]) -> list[str]:
+        stop_words: set[str] = set(stopwords.words('english'))
+        return [word for word in word_list if word not in stop_words]
 
     @classmethod
-    async def fully_preprocessed_data(cls) -> DataFrame:
+    async def fully_preprocessed_data(cls) -> list[str]:
         try:
-            df: DataFrame = pd.read_csv(DATA_SOURCE)
-            df: DataFrame = await cls.preprocess(df)
-            tasks: list = [
-                cls.get_rid_of_punctuation(text)
-                for text in df['Key Phrases']
-            ]
-            cleaned_texts: Any = await gather(*tasks)
-            lemmatized_texts: list = [await cls.lemmas(text) for text in cleaned_texts]
-            df['Key Phrases'] = [' '.join(text) for text in lemmatized_texts]
-            if not df.empty:
-                logger.debug('Something is wrong with df. Maybe, its empty just like your heart.')
-            return df
+            df: DataFrame = pd.read_csv(DATA_SOURCE)['Key Phrases'].tolist()
+            # cleaned_texts = [cls.get_rid_of_punctuation_and_nan() for text in df]
+            cleaned_texts = cls.get_rid_of_punctuation_and_nan()
+            lemmatized_texts = [cls.lemmas(text) for text in cleaned_texts]
+            stopwords_removed = [await cls.stop_words_removal(text) for text in lemmatized_texts]
+            return [' '.join(text) for text in stopwords_removed]
         except (ValueError, IndexError) as e:
-            logger.error(f'Having issues here: {e!r}')
+            logger.error(f'Error in preprocessing data: {e!r}')
