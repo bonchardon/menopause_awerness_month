@@ -3,7 +3,7 @@ from asyncio import run
 from loguru import logger
 
 from core.stage_1.main_topics import GeneralDiscussionAnalysis
-from core.stage_1.preprocess_data import Preprocess
+from src.core.preprocess_data import Preprocess
 
 
 async def main():

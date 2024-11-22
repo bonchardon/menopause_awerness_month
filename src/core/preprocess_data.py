@@ -1,4 +1,3 @@
-from string import punctuation
 from re import sub
 from csv import DictReader
 
